@@ -121,6 +121,67 @@ namespace Apache.Arrow.Tests
             TestRoundTripRecordBatch(batch);
         }
 
+        [Fact]
+        public void BuildStructArray()
+        {
+            // Construct 
+            var nameField = new Field("name", StringType.Default, nullable: false);
+            var ageField = new Field("age", Int64Type.Default, nullable: false);
+            var structBuilder = new StructArray.Builder(new[] { nameField, ageField });
+
+            var items = new List<(string, long)?>
+            {
+                ("joe", 1),
+                null,
+                ("mark", 4),
+                ("abe", 10),
+                ("phil", 55),
+            };
+
+            foreach (var item in items)
+            {
+                if (item.HasValue)
+                {
+                    structBuilder.Append((index, builder) =>
+                    {
+                        switch (index)
+                        {
+                            case 0:
+                                ((StringArray.Builder)builder).Append(item.Value.Item1);
+                                break;
+                            case 1:
+                                ((Int64Array.Builder)builder).Append(item.Value.Item2);
+                                break;
+                        }
+                    });
+                }
+                else
+                {
+                    structBuilder.AppendNull();
+                }
+            }
+
+            var array = structBuilder.Build();
+
+            Assert.Equal(5, array.Length);
+            Assert.Equal(1, array.NullCount);
+
+            var nameArray = array.Fields[0] as StringArray;
+            var ageArray = array.Fields[1] as Int64Array;
+
+            Assert.Equal(4, nameArray.Length);
+            Assert.Equal(4, ageArray.Length);
+
+            Assert.Equal("joe", nameArray.GetString(0));
+            Assert.Equal(1L, ageArray.GetValue(0));
+            Assert.Equal("mark", nameArray.GetString(1));
+            Assert.Equal(4L, ageArray.GetValue(1));
+            Assert.Equal("abe", nameArray.GetString(2));
+            Assert.Equal(10L, ageArray.GetValue(2));
+            Assert.Equal("phil", nameArray.GetString(3));
+            Assert.Equal(55L, ageArray.GetValue(3));
+        }
+
         private static void TestRoundTripRecordBatch(RecordBatch originalBatch)
         {
             using (MemoryStream stream = new MemoryStream())

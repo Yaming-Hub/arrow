@@ -83,6 +83,7 @@ namespace Apache.Arrow
                 case ArrowTypeId.Decimal256:
                     return new Decimal256Array.Builder(dataType as Decimal256Type);
                 case ArrowTypeId.Struct:
+                    return new StructArray.Builder(dataType as StructType);
                 case ArrowTypeId.Union:
                 case ArrowTypeId.Dictionary:
                 case ArrowTypeId.FixedSizedBinary:

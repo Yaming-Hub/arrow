@@ -329,6 +329,94 @@ namespace Apache.Arrow.Tests
                 ((Int64Array)childList3.GetSlicedValues(2)).ToList(includeNulls: true));
         }
 
+        [Fact]
+        public void NestedStructListArrayBuilder()
+        {
+            // Build array
+            // [[{"joe", 1}], null, [{"mark", 4}, null, {"abe", 10}], [], [{"phil", 55}]]
+            var nameField = new Field("name", StringType.Default, nullable: false);
+            var ageField = new Field("age", Int64Type.Default, nullable: false);
+            var listBuilder = new ListArray.Builder(new StructType(new[] { nameField, ageField }));
+            var valueBuilder = listBuilder.ValueBuilder as StructArray.Builder;
+
+            // [{"joe", 1}]
+            listBuilder.Append();
+            valueBuilder.Append((i, b) =>
+            {
+                switch (i)
+                {
+                    case 0:
+                        ((StringArray.Builder)b).Append("joe");
+                        break;
+                    case 1:
+                        ((Int64Array.Builder)b).Append(1);
+                        break;
+                };
+            });
+
+            // null
+            listBuilder.AppendNull();
+
+            // [{"mark", 4}, null, {"abe", 10}]
+            listBuilder.Append();
+            valueBuilder.Append((i, b) =>
+            {
+                switch (i)
+                {
+                    case 0:
+                        ((StringArray.Builder)b).Append("mark");
+                        break;
+                    case 1:
+                        ((Int64Array.Builder)b).Append(4);
+                        break;
+                };
+            });
+            valueBuilder.AppendNull();
+            valueBuilder.Append((i, b) =>
+            {
+                switch (i)
+                {
+                    case 0:
+                        ((StringArray.Builder)b).Append("abe");
+                        break;
+                    case 1:
+                        ((Int64Array.Builder)b).Append(10);
+                        break;
+                };
+            });
+
+            // []
+            listBuilder.Append();
+
+            // [{"phil", 55}]
+            listBuilder.Append();
+            valueBuilder.Append((i, b) =>
+            {
+                switch (i)
+                {
+                    case 0:
+                        ((StringArray.Builder)b).Append("phil");
+                        break;
+                    case 1:
+                        ((Int64Array.Builder)b).Append(55);
+                        break;
+                };
+            });
+
+            var list = listBuilder.Build();
+            Assert.Equal(5, list.Length);
+            Assert.Equal(1, list.NullCount);
+
+            // [{"mark", 4}, null, {"abe", 10}]
+            var array = list.GetSlicedValues(2) as StructArray;
+            Assert.NotNull(array);
+            Assert.Equal(3, array.Length);
+            Assert.Equal("mark", ((StringArray)array.Fields[0]).GetString(array.Offset + 0));
+            Assert.Equal(4L, ((Int64Array)array.Fields[1]).GetValue(array.Offset + 0));
+            Assert.Equal("abe", ((StringArray)array.Fields[0]).GetString(array.Offset + 1));
+            Assert.Equal(10L, ((Int64Array)array.Fields[1]).GetValue(array.Offset + 1));
+        }
+
         public class TimestampArrayBuilder
         {
             [Fact]
